@@ -5,6 +5,7 @@ import com.github.tm.glink.features.TrajectoryPoint;
 import com.github.tm.glink.features.avro.AvroPoint;
 import com.github.tm.glink.features.serialization.FlinkPointDeSerialize;
 import com.github.tm.glink.features.serialization.FlinkTrajectoryDeSerialize;
+import com.github.tm.glink.hbase.sink.HBaseTrajectoryTableSink;
 import com.github.tm.glink.hbase.sink.HBaseWBTableSink;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -18,28 +19,30 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import java.util.Properties;
 
 /**
- * This class import weather base data from kafka broker to hbase table
+ * This class import Xiamen taxi trajectory point data from kafka broker to hbase table
  * Store to the corresponding table according to different row key encodings
  * The correspondence is as follows:
- * 1. rowkey: IDT(Station_ID yyyyMMddHH) -> tableName: Hubei_WeatherBase_IDT
+ * 1. rowkey: TST(yyyyMMdd Z2 HHmmss) -> tableName: Xiamen_TrajectoryPoint_TST
+ * 2. rowkey: ID + TST(yyyyMMdd Z2 HHmmss) -> tableName: Xiamen_TrajectoryPoint_IDTST
+ *
  * @author Wang Yue
  * */
-public class WBDataToHBase {
+public class XiamenTrajectoryToHBase {
 
   public static void main(String[] args) throws Exception {
     final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-    final String schema = "PRS:string;PRS_Sea:string;WIN_S_Max:string;WIN_S_Avg_2mi:string;TEM:string;RHU:string;PRE_1h:string;VIS:string;tigan:string";
+    final String schema = "speed:double;azimuth:int;status:int";
 
     Properties props = new Properties();
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-    FlinkKafkaConsumer<Point> consumer = new FlinkKafkaConsumer<>(
-            "WeatherBaseData",
-            new FlinkPointDeSerialize(schema),
+    FlinkKafkaConsumer<TrajectoryPoint> consumer = new FlinkKafkaConsumer<>(
+            "XiamenTrajectory",
+            new FlinkTrajectoryDeSerialize(schema),
             props);
-    DataStream<Point> dataStream = env.addSource(consumer);
-    dataStream.addSink(new HBaseWBTableSink<>("Hubei_WeatherBase_IDT"));
+    DataStream<TrajectoryPoint> dataStream = env.addSource(consumer);
+    dataStream.addSink(new HBaseTrajectoryTableSink<>("Xiamen_TrajectoryPoint_TST", "Xiamen_TrajectoryPoint_IDTST"));
 
     dataStream.print();
 

@@ -67,7 +67,7 @@ public class HBaseWBTableSink<T extends Point> extends RichSinkFunction<T> {
             localDateTime.getMinute(),
             localDateTime.getSecond());
     ByteArray time = timeEncoding.getIndex(timeValue).getStart();
-    ByteArray rowKey = new ByteArray(value.getId()).combine(time);
+    ByteArray rowKey = (new ByteArray(value.getId())).combine(time);
     Put put = new Put(rowKey.getBytes());
     Properties attributes = value.getAttributes();
     for (String name : attrName) {
