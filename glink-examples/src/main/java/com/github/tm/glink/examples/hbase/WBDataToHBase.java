@@ -1,14 +1,8 @@
 package com.github.tm.glink.examples.hbase;
 
 import com.github.tm.glink.features.Point;
-import com.github.tm.glink.features.TrajectoryPoint;
-import com.github.tm.glink.features.avro.AvroPoint;
 import com.github.tm.glink.features.serialization.FlinkPointDeSerialize;
-import com.github.tm.glink.features.serialization.FlinkTrajectoryDeSerialize;
 import com.github.tm.glink.hbase.sink.HBaseWBTableSink;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.flink.formats.avro.AvroDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;

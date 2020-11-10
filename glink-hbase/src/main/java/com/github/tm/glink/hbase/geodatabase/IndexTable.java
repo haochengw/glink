@@ -19,10 +19,6 @@ public class IndexTable {
     return table;
   }
 
-//  public <T extends Service, R> Map<byte[], R> coprocessorService(Class<T> var1, byte[] var2, byte[] var3, Batch.Call<T, R> var4) throws ServiceException, Throwable {
-//    return super.getTable().coprocessorService(var1, var2, var3, var4);
-//  }
-
   /**
    * @param queryType query type need to executed
    * @param dataType data type of this dataset
@@ -31,8 +27,6 @@ public class IndexTable {
     switch (queryType) {
       case IDTemporal_QUERY:
         return new IDTemporalQuery(dataType, this);
-      case IDSTRANGE_QUERY:
-        return new IDSTRangeQuery(dataType, this);
       case STRANGE_QUERY:
         return new STRangeQuery(dataType, this);
       case KNN_QUERY:

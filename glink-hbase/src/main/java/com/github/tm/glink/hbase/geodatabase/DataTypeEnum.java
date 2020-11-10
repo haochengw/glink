@@ -17,7 +17,7 @@ public enum DataTypeEnum {
    */
   WEATHER(1, "WBData");
 
-  //Other types of data to be extended.
+  // todo:Other types of data to be extended.
 
   private int index;
   private String name;
@@ -39,7 +39,7 @@ public enum DataTypeEnum {
     switch (name) {
       case "XiamenTrajectory":
         return TRAJECTORY;
-      case "WBData":
+      case "WeatherBaseData":
         return WEATHER;
       default:
         throw new UnsupportedOperationException("Unsupported Data type name");

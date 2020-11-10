@@ -1,19 +1,16 @@
 package com.github.tm.glink.hbase.sink;
 
 import com.github.tm.glink.features.Point;
-import com.github.tm.glink.features.avro.AvroPoint;
 import com.github.tm.stindex.ByteArray;
 import com.github.tm.stindex.temporal.ConcatenationTimeEncoding;
 import com.github.tm.stindex.temporal.TimeEncoding;
 import com.github.tm.stindex.temporal.TimePointDimensionDefinition;
 import com.github.tm.stindex.temporal.data.TimeValue;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -54,7 +51,7 @@ public class HBaseWBTableSink<T extends Point> extends RichSinkFunction<T> {
   }
 
   @Override
-  public void invoke(T value, SinkFunction.Context context) throws Exception {
+  public void invoke(T value, Context context) throws Exception {
     System.out.println(value);
 
     LocalDateTime localDateTime = Instant.ofEpochMilli(value.getTimestamp())

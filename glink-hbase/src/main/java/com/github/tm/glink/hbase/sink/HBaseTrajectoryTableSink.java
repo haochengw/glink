@@ -1,7 +1,8 @@
 package com.github.tm.glink.hbase.sink;
 
 import com.github.tm.glink.features.Point;
-import com.github.tm.glink.features.avro.AvroPoint;
+import com.github.tm.glink.features.TrajectoryPoint;
+import com.github.tm.glink.features.avro.AvroTrajectoryPoint;
 import com.github.tm.stindex.ByteArray;
 import com.github.tm.stindex.dimension.BasicDimensionDefinition;
 import com.github.tm.stindex.dimension.TimeDimensionDefinition;
@@ -13,7 +14,6 @@ import com.github.tm.stindex.st.STEncoding;
 import com.github.tm.stindex.temporal.ConcatenationTimeEncoding;
 import com.github.tm.stindex.temporal.TimeEncoding;
 import com.github.tm.stindex.temporal.TimePeriodDimensionDefinition;
-import com.github.tm.stindex.temporal.TimePointDimensionDefinition;
 import com.github.tm.stindex.temporal.data.TimeValue;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.hadoop.conf.Configuration;
@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Calendar;
+import java.util.Properties;
 
 /**
  * This class is used to design the storage structure for the trajectory point data
@@ -32,24 +33,23 @@ import java.util.Calendar;
  * @author Wang Yue
  * */
 public class HBaseTrajectoryTableSink<T extends Point> extends RichSinkFunction<T> {
-
   private transient Configuration configuration;
   private transient Connection connection;
   private transient Admin admin;
-
   private transient Table table1;
   private transient Table table2;
 
+  public String tableName1;
+  public String tableName2;
+
   private transient STEncoding tstEncoding;
 
-  private transient AvroPoint avroPoint;
+  private transient AvroTrajectoryPoint avroTrajectoryPoint;
 
-  public String trajectoryPointTST;
-  public String trajectoryPointIDTST;
 
-  public HBaseTrajectoryTableSink(String trajectoryPointTST, String trajectoryPointIDTST) {
-    this.trajectoryPointTST = trajectoryPointTST;
-    this.trajectoryPointIDTST = trajectoryPointIDTST;
+  public HBaseTrajectoryTableSink(String tableName1, String tableName2) {
+    this.tableName1 = tableName1;
+    this.tableName2 = tableName2;
   }
 
   @Override
@@ -58,19 +58,20 @@ public class HBaseTrajectoryTableSink<T extends Point> extends RichSinkFunction<
     connection = ConnectionFactory.createConnection(configuration);
     admin = connection.getAdmin();
 
-    table1 = connection.getTable(TableName.valueOf(trajectoryPointTST));
-    table2 = connection.getTable(TableName.valueOf(trajectoryPointIDTST));
+    table1 = connection.getTable(TableName.valueOf(tableName1));
+    table2 = connection.getTable(TableName.valueOf(tableName2));
 
     TimeDimensionDefinition timePeriodDimDef = new TimePeriodDimensionDefinition(Calendar.SECOND);
     TimeEncoding timePeriodTimeEncoding = new ConcatenationTimeEncoding(timePeriodDimDef);
     SFCDimensionDefinition[] dimensions = {
-            new SFCDimensionDefinition(new BasicDimensionDefinition(-180.0, 180.0), 2),
-            new SFCDimensionDefinition(new BasicDimensionDefinition(-90.0, 90.0), 2)};
-    GridIndex hilbert = SFCFactory.createSpaceFillingCurve(dimensions, SFCFactory.SFCType.HILBERT);
+            new SFCDimensionDefinition(new BasicDimensionDefinition(-180.0, 180.0), 20),
+            new SFCDimensionDefinition(new BasicDimensionDefinition(-90.0, 90.0), 20)};
+    GridIndex zorder = SFCFactory.createSpaceFillingCurve(dimensions, SFCFactory.SFCType.ZORDER);
 
-    tstEncoding = new ConcatenationEncoding(timePeriodTimeEncoding, hilbert);
+    tstEncoding = new ConcatenationEncoding(timePeriodTimeEncoding, zorder);
 
-    avroPoint = new AvroPoint();
+    String schema = "speed:double;azimuth:int;status:int";
+    avroTrajectoryPoint = new AvroTrajectoryPoint(schema);
   }
 
   @Override
@@ -86,15 +87,18 @@ public class HBaseTrajectoryTableSink<T extends Point> extends RichSinkFunction<
             localDateTime.getHour(),
             localDateTime.getMinute(),
             localDateTime.getSecond());
-    ByteArray rowKey1 = tstEncoding.getIndex(timeValue, new double[] {value.getLng(), value.getLat()});
-    ByteArray rowKey2 = (new ByteArray(value.getId())).combine(rowKey1);
+    ByteArray rowKey = tstEncoding.getIndex(timeValue, new double[] {value.getLng(), value.getLat()});
+    // TST + ID
+    ByteArray rowKey1 = rowKey.combine(new ByteArray(value.getId()));
+    // ID + TST
+    ByteArray rowKey2 = (new ByteArray(value.getId())).combine(rowKey);
 
     Put put1 = new Put(rowKey1.getBytes());
-    put1.addColumn("f".getBytes(), "v".getBytes(), avroPoint.serialize(value));
+    put1.addColumn("f".getBytes(), "v".getBytes(), avroTrajectoryPoint.serialize((TrajectoryPoint) value));
     table1.put(put1);
 
     Put put2 = new Put(rowKey2.getBytes());
-    put2.addColumn("f".getBytes(), "v".getBytes(), avroPoint.serialize(value));
+    put2.addColumn("f".getBytes(), "v".getBytes(), avroTrajectoryPoint.serialize((TrajectoryPoint) value));
     table2.put(put2);
   }
 

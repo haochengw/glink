@@ -7,9 +7,8 @@ package com.github.tm.glink.hbase.query;
  * */
 public enum QueryType {
   IDTemporal_QUERY(0, "IDTemporal_QUERY"),
-  IDSTRANGE_QUERY(1, "IDSTRANGE_QUERY"),
-  STRANGE_QUERY(2, "STRANGE_QUERY"),
-  KNN_QUERY(3, "KNN_QUERY");
+  STRANGE_QUERY(1, "STRANGE_QUERY"),
+  KNN_QUERY(2, "KNN_QUERY");
 
 
   private int id;

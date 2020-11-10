@@ -9,8 +9,6 @@ import java.time.ZoneOffset;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
-import static jdk.internal.org.objectweb.asm.Type.getType;
-
 /**
  * This class is used to produce point objects with attributes
  * from csv files to Kafka. In each csv file, one line represents
@@ -62,7 +60,7 @@ public class CSVWBDataProducer extends BaseCSVProducer<String, byte[]> {
       attributes.put(attrName[i], items[i]);
     }
     point.setAttributes(attributes);
-    byte[] data = avroPoint.serialize(point);
-    return new KeyValue<>(items[0], data);
+
+    return new KeyValue<>(items[0], avroPoint.serialize(point));
   }
 }

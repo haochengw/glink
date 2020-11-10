@@ -1,15 +1,8 @@
 package com.github.tm.glink.examples.hbase;
 
-import com.github.tm.glink.features.Point;
 import com.github.tm.glink.features.TrajectoryPoint;
-import com.github.tm.glink.features.avro.AvroPoint;
-import com.github.tm.glink.features.serialization.FlinkPointDeSerialize;
 import com.github.tm.glink.features.serialization.FlinkTrajectoryDeSerialize;
 import com.github.tm.glink.hbase.sink.HBaseTrajectoryTableSink;
-import com.github.tm.glink.hbase.sink.HBaseWBTableSink;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.flink.formats.avro.AvroDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
@@ -38,11 +31,11 @@ public class XiamenTrajectoryToHBase {
     props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
     FlinkKafkaConsumer<TrajectoryPoint> consumer = new FlinkKafkaConsumer<>(
-            "XiamenTrajectory",
+            "XiamenTrajectoryPoint",
             new FlinkTrajectoryDeSerialize(schema),
             props);
     DataStream<TrajectoryPoint> dataStream = env.addSource(consumer);
-    dataStream.addSink(new HBaseTrajectoryTableSink<>("Xiamen_TrajectoryPoint_TST", "Xiamen_TrajectoryPoint_IDTST"));
+    dataStream.addSink(new HBaseTrajectoryTableSink<>("Xiamen_TrajectoryPoint_TSTID", "Xiamen_TrajectoryPoint_IDTST"));
 
     dataStream.print();
 

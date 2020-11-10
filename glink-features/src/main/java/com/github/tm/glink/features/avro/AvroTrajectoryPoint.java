@@ -53,9 +53,9 @@ public class AvroTrajectoryPoint extends AvroGeoObject<TrajectoryPoint> {
   public TrajectoryPoint deserialize(byte[] data) {
     GenericRecord record = injection.invert(data).get();
     Properties attributes = deserializeAttributes(record);
-    Point point = genericToTrajectoryPoint(record);
-    point.setAttributes(attributes);
-    return genericToTrajectoryPoint(record);
+    TrajectoryPoint trajectoryPoint = genericToTrajectoryPoint(record);
+    trajectoryPoint.setAttributes(attributes);
+    return trajectoryPoint;
   }
 
   public static TrajectoryPoint genericToTrajectoryPoint(GenericRecord record) {
