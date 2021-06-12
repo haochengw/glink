@@ -10,6 +10,8 @@ import org.locationtech.jts.geom.Point;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +40,16 @@ public enum TileAggregateType implements Serializable {
                 return new CountPixelAgg();
         }
     }
+
+    public static AggregateFunction getFinalAggregateFunction(TileAggregateType aggregateType) {
+        switch (aggregateType) {
+            case SUM:
+                return new SumFinalTileAggregate();
+            default:
+                return new SumFinalTileAggregate();
+        }
+    }
+
 
     private static class AvePixelAgg <V> implements AggregateFunction<Tuple2<PixelResult<V>, Point>, Map<Pixel, Tuple2<Integer, V>>, TileResult<V>>{
 
@@ -274,6 +286,55 @@ public enum TileAggregateType implements Serializable {
             }));
             return c;
         }
+    }
+
+    private static class SumFinalTileAggregate implements AggregateFunction<TileResult, TileResult, TileResult> {
+        @Override
+        public TileResult createAccumulator() {
+            return new TileResult();
+        }
+
+        @Override
+        public TileResult add(TileResult value, TileResult accumulator) {
+            if (accumulator.getTile() == null) {
+                accumulator.setTile(value.getTile());
+                accumulator.setGridResultList(value.getGridResultList());
+            } else {
+                List<PixelResult> lAcc = accumulator.getGridResultList();
+                List<Integer> pixelIdAcc = new LinkedList<>();
+                // 存储每个pixel的id。
+                for (PixelResult pixel : lAcc) {
+                    pixelIdAcc.add(pixel.getPixel().getPixelNo());
+                }
+                List<PixelResult> lVal = value.getGridResultList();
+                // 进行pixel的聚合，如果之前已经存在了acc中，则更新pixel的result，否则添加到acc中。
+                for (PixelResult pixel : lVal) {
+                    int pixelId = pixel.getPixel().getPixelNo();
+                    if (pixelIdAcc.contains(pixelId)) {
+                        int index = pixelIdAcc.indexOf(pixelId);
+                        double oldVal = (double) lAcc.get(index).getResult();
+                        double toAdd = (double) pixel.getResult();
+                        lAcc.get(index).setResult(oldVal + toAdd);
+                    } else {
+                        lAcc.add(pixel);
+                        pixelIdAcc.add(pixel.getPixel().getPixelNo());
+                    }
+                }
+                accumulator.setGridResultList(lAcc);
+            }
+            return accumulator;
+        }
+
+        @Override
+        public TileResult getResult(TileResult accumulator) {
+            return accumulator;
+        }
+        // 不会使用Session Window，暂不实现。
+        @Override
+        public TileResult merge(TileResult a, TileResult b) {
+            return null;
+        }
+
     }
 
 }

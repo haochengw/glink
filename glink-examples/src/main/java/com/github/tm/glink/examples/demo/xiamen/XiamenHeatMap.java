@@ -13,6 +13,7 @@ import com.github.tm.glink.core.datastream.SpatialDataStream;
 import com.github.tm.glink.core.datastream.TileDataStream;
 import com.github.tm.glink.core.enums.GeometryType;
 import com.github.tm.glink.core.enums.TextFileSplitter;
+import com.github.tm.glink.core.enums.TileAggregateType;
 import com.github.tm.glink.core.enums.TopologyType;
 import com.github.tm.glink.core.tile.Pixel;
 import com.github.tm.glink.core.tile.PixelResult;
@@ -22,6 +23,7 @@ import com.github.tm.glink.sql.util.Schema;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -30,6 +32,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
@@ -40,6 +43,8 @@ public class XiamenHeatMap {
 
   // For spatial data stream source.
   public static final String ZOOKEEPERS = "localhost:2181";
+  public static final String KAFKA_BOOSTRAP_SERVERS = "localhost:9092";
+  public static final String KAFKA_GROUP_ID = "Xiamen";
   public static final String CATALOG_NAME = "Xiamen";
   public static final String TILE_SCHEMA_NAME = "Heatmap";
   public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
@@ -124,18 +129,22 @@ public class XiamenHeatMap {
     pointDataStoreParam.initFromConfigOptions(confForOutputPoints);
     GeoMesaStreamTableSchema pointSchema = new GeoMesaStreamTableSchema(fieldNamesToTypesForPoints, confForOutputPoints);
     GeoMesaSinkFunction pointSink = new GeoMesaSinkFunction<>(pointDataStoreParam, pointSchema, new PointToSimpleFeatureConverter(pointSchema));
+    // Kafka properties
+    Properties props = new Properties();
+    props.setProperty("bootstrap.servers", KAFKA_BOOSTRAP_SERVERS);
+    props.put("zookeeper.connect", ZOOKEEPERS);
+    props.setProperty("group.id",KAFKA_GROUP_ID);
     // 模拟流
     SpatialDataStream<Point> originalDataStream = new SpatialDataStream<Point>(
-            env, new CSVStringSourceSimulation(FILEPATH, SPEED_UP, TIMEFIELDINDEX, SPLITTER, false),
+            env, new FlinkKafkaConsumer<>(KafkaDataProducer.TOPICID, new SimpleStringSchema(), props).setStartFromLatest(),
             4, 5, TextFileSplitter.CSV, GeometryType.POINT, true,
             Schema.types(Integer.class, Double.class, Integer.class, Long.class, String.class, String.class))
             .assignTimestampsAndWatermarks((WatermarkStrategy.<Point>forBoundedOutOfOrderness(Duration.ofSeconds(3))
                     .withTimestampAssigner((event, timestamp) -> ((Tuple) event.getUserData()).getField(TIMEFIELDINDEX))));
     // 热力图生成
     WindowAssigner assigner = SlidingEventTimeWindows.of(windowLength, Time.minutes(5));
-    TileDataStream tileDataStream = new TileDataStream(originalDataStream, new CountAggregator(), assigner, H_LEVEL, L_LEVEL);
+    TileDataStream tileDataStream = new TileDataStream(originalDataStream, new CountAggregator(), assigner, H_LEVEL, L_LEVEL, true, TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
     tileDataStream.getTileResultDataStream().addSink(heatMapSink);
-    // 围栏Join
     originalDataStream.spatialDimensionJoin(bsd, TopologyType.N_CONTAINS, new AddFenceId(), new TypeHint<Point>() { })
             .addSink(pointSink);
 
