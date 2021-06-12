@@ -1,6 +1,7 @@
 package com.github.tm.glink.examples.demo.xiamen;
 
 import com.github.tm.glink.core.enums.TextFileSplitter;
+import com.github.tm.glink.examples.utils.HBaseCatalogCleaner;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
@@ -14,12 +15,18 @@ import java.util.Properties;
 public class KafkaDataProducer {
     public static final String FILEPATH = "/Users/haocheng/Code/glink/glink-examples/src/main/resources/XiamenTrajDataCleaned.csv";
     public static final String TOPICID = "XiamenData";
-    public static final int SPEED_UP = 50;
-    public static final int CARNO_FIELD_UDINDEX = 4;
+    public static final int SPEED_UP = 100;
     public static final int TIMEFIELDINDEX = 3;
     public static final TextFileSplitter SPLITTER = TextFileSplitter.CSV;
+    public static final String CATALOG_NAME = "Xiamen";
+    public static final String TILE_SCHEMA_NAME = "Heatmap";
+    public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
 
     public static void main(String[] args) throws Exception {
+        // Drop old tables in HBase
+        new HBaseCatalogCleaner(XiamenHeatMap.ZOOKEEPERS).deleteTable(CATALOG_NAME, TILE_SCHEMA_NAME);
+        new HBaseCatalogCleaner(XiamenHeatMap.ZOOKEEPERS).deleteTable(CATALOG_NAME, POINTS_SCHEMA_NAME);
+
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         Properties props = new Properties();
         props.put("bootstrap.servers", XiamenHeatMap.KAFKA_BOOSTRAP_SERVERS);

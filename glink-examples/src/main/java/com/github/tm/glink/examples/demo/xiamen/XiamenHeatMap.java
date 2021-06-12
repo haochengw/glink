@@ -48,9 +48,7 @@ public class XiamenHeatMap {
   public static final String CATALOG_NAME = "Xiamen";
   public static final String TILE_SCHEMA_NAME = "Heatmap";
   public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
-  public static final String FILEPATH = "/Users/haocheng/Code/glink/glink-examples/src/main/resources/XiamenTrajDataCleaned.csv";
-  public static final int SPEED_UP = 50;
-  public static final long WIN_LEN = 10L;
+  public static final long WIN_LEN = 5L;
   public static final int PARALLELISM = 20;
   public static final int CARNO_FIELD_UDINDEX = 4;
   public static final int TIMEFIELDINDEX = 3;
@@ -61,10 +59,6 @@ public class XiamenHeatMap {
 
   public static void main(String[] args) throws Exception {
     Time windowLength = Time.minutes(WIN_LEN);
-    // Drop old tables in HBase
-    new HBaseCatalogCleaner(ZOOKEEPERS).deleteTable(CATALOG_NAME, TILE_SCHEMA_NAME);
-    new HBaseCatalogCleaner(ZOOKEEPERS).deleteTable(CATALOG_NAME, POINTS_SCHEMA_NAME);
-
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
     env.getConfig().setAutoWatermarkInterval(1000L);
     env.setParallelism(PARALLELISM);
@@ -142,8 +136,14 @@ public class XiamenHeatMap {
             .assignTimestampsAndWatermarks((WatermarkStrategy.<Point>forBoundedOutOfOrderness(Duration.ofSeconds(3))
                     .withTimestampAssigner((event, timestamp) -> ((Tuple) event.getUserData()).getField(TIMEFIELDINDEX))));
     // 热力图生成
-    WindowAssigner assigner = SlidingEventTimeWindows.of(windowLength, Time.minutes(5));
-    TileDataStream tileDataStream = new TileDataStream(originalDataStream, new CountAggregator(), assigner, H_LEVEL, L_LEVEL, true, TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
+    TileDataStream tileDataStream = new TileDataStream(
+            originalDataStream,
+            new CountAggregator(),
+            SlidingEventTimeWindows.of(windowLength, Time.minutes(5)),
+            H_LEVEL,
+            L_LEVEL,
+            true,
+            TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
     tileDataStream.getTileResultDataStream().addSink(heatMapSink);
     originalDataStream.spatialDimensionJoin(bsd, TopologyType.N_CONTAINS, new AddFenceId(), new TypeHint<Point>() { })
             .addSink(pointSink);

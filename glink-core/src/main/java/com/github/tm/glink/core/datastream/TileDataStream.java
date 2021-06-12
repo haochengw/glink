@@ -50,7 +50,6 @@ public class TileDataStream<T1 extends Point, T2> {
             .aggregate(TileAggregateType.getAggregateFunction(aggregateType, aggFieldIndex), new AddWindowTimeInfo());
   }
 
-  // TODO: Two phase aggregate.
   public TileDataStream(
           SpatialDataStream<T1> pointDataStream,
           AggregateFunction<Tuple2<PixelResult, T1>, Map<Pixel, T2>, TileResult> aggregateFunction,
@@ -62,8 +61,8 @@ public class TileDataStream<T1 extends Point, T2> {
     if (addSalt) {
       tileResultDataStream = pointDataStream.getDataStream()
               .flatMap(new PixelGenerateFlatMap(hLevel, lLevel))
-              .keyBy(new KeyByTileWithSalt())
               // 预聚合
+              .keyBy(new KeyByTileWithSalt())
               .window(windowAssigner)
               .aggregate(aggregateFunction, new AddWindowTimeInfo())
               // final aggregate
@@ -121,24 +120,24 @@ public class TileDataStream<T1 extends Point, T2> {
   private class DefaultKeyByTile implements KeySelector<Tuple2<PixelResult<Integer>, T1>, Long> {
     private static final long serialVersionUID = 406340347008662020L;
     @Override
-    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) throws Exception {
+    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) {
       return value.f0.getPixel().getTile().toLong();
     }
   }
 
   private class KeyByTileWithOutSalt implements KeySelector<TileResult, Tile> {
-    private static final long serialVersionUID = 406340347008662020L;
+    private static final long serialVersionUID = 2776649793200324329L;
+
     @Override
-    public Tile getKey(TileResult value) throws Exception {
+    public Tile getKey(TileResult value){
       return value.getTile();
     }
   }
 
   private class KeyByTileWithSalt implements KeySelector<Tuple2<PixelResult<Integer>, T1>, Long> {
-    private static final long serialVersionUID = 406340347008662020L;
-    private int parallism;
+    private static final long serialVersionUID = -2035066458743967320L;
     @Override
-    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) throws Exception {
+    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) {
       return value.f0.getPixel().getTile().toLong() + ThreadLocalRandom.current().nextLong(1, 8);
     }
   }
