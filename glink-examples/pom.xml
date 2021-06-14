@@ -179,7 +179,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.tm.glink.examples.demo.xiamen.XiamenHeatMap.Main</mainClass>
+                            <mainClass>com.github.tm.glink.examples.demo.xiamen.XiamenTwoJobs.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

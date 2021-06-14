@@ -17,10 +17,12 @@ import org.locationtech.jts.geom.Point;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.security.Key;
 import java.sql.Timestamp;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 
@@ -62,13 +64,14 @@ public class TileDataStream<T1 extends Point, T2> {
       tileResultDataStream = pointDataStream.getDataStream()
               .flatMap(new PixelGenerateFlatMap(hLevel, lLevel))
               // 预聚合
-              .keyBy(new KeyByTileWithSalt())
+              .map(r -> new Tuple2(r, r.f0.getPixel().getTile().toString() + ThreadLocalRandom.current().nextLong(1,20)))
+              .keyBy(r -> r.f1)
               .window(windowAssigner)
-              .aggregate(aggregateFunction, new AddWindowTimeInfo())
+              .aggregate(aggregateFunction)
               // final aggregate
               .keyBy(new KeyByTileWithOutSalt())
               .window(windowAssigner)
-              .aggregate(finalTileAggregate);
+              .aggregate(finalTileAggregate, new AddWindowTimeInfo());
     } else {
       tileResultDataStream = pointDataStream.getDataStream()
               .flatMap(new PixelGenerateFlatMap(hLevel, lLevel))
@@ -117,28 +120,27 @@ public class TileDataStream<T1 extends Point, T2> {
     }
   }
 
-  private class DefaultKeyByTile implements KeySelector<Tuple2<PixelResult<Integer>, T1>, Long> {
+  private class DefaultKeyByTile implements KeySelector<Tuple2<PixelResult<Integer>, T1>, Tile> {
     private static final long serialVersionUID = 406340347008662020L;
     @Override
-    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) {
-      return value.f0.getPixel().getTile().toLong();
+    public Tile getKey(Tuple2<PixelResult<Integer>, T1> value) {
+      return value.f0.getPixel().getTile();
     }
   }
 
   private class KeyByTileWithOutSalt implements KeySelector<TileResult, Tile> {
     private static final long serialVersionUID = 2776649793200324329L;
-
     @Override
     public Tile getKey(TileResult value){
       return value.getTile();
     }
   }
 
-  private class KeyByTileWithSalt implements KeySelector<Tuple2<PixelResult<Integer>, T1>, Long> {
-    private static final long serialVersionUID = -2035066458743967320L;
+  private class KeyByTileWithSalt implements KeySelector<Tuple2<Tuple2<PixelResult, T1>,String>, String> {
+    private static final long serialVersionUID = 2776649793200324329L;
     @Override
-    public Long getKey(Tuple2<PixelResult<Integer>, T1> value) {
-      return value.f0.getPixel().getTile().toLong() + ThreadLocalRandom.current().nextLong(1, 8);
+    public String getKey(Tuple2<Tuple2<PixelResult, T1>, String> tuple2StringTuple2) throws Exception {
+      return tuple2StringTuple2.f1;
     }
   }
 

@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 public class XiamenGeoFenceInport {
 
-  public static final String ZOOKEEPERS = XiamenHeatMap.ZOOKEEPERS;
+  public static final String ZOOKEEPERS = XiamenTwoJobs.ZOOKEEPERS;
   public static final String CATALOG_NAME = "Xiamen";
   public static final String GEOFENCE_SCHEMA_NAME = "Geofence";
   public static final String FILEPATH = Objects.requireNonNull(XiamenGeoFenceInport.class.getClassLoader().getResource("XiamenPolygonData.txt")).getPath();

@@ -39,12 +39,12 @@ import org.locationtech.jts.geom.Polygon;
 import java.time.Duration;
 import java.util.*;
 
-public class XiamenHeatMap {
+public class XiamenTwoJobs {
 
   // For spatial data stream source.
-  public static final String ZOOKEEPERS = "localhost:2181";
-  public static final String KAFKA_BOOSTRAP_SERVERS = "localhost:9092";
-  public static final String KAFKA_GROUP_ID = "Xiamen";
+  public static final String ZOOKEEPERS = "u0:2181,u1:2181,u2:2181";
+  public static final String KAFKA_BOOSTRAP_SERVERS = "u0:9092";
+  public static final String KAFKA_GROUP_ID = "TWOJOBS";
   public static final String CATALOG_NAME = "Xiamen";
   public static final String TILE_SCHEMA_NAME = "Heatmap";
   public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
@@ -67,16 +67,16 @@ public class XiamenHeatMap {
     // Get heatmap sink function
     Configuration confForTiles = new Configuration();
     confForTiles.setString("geomesa.data.store", "hbase");
-    confForTiles.setString("hbase.catalog", "Xiamen");
-    confForTiles.setString("geomesa.schema.name", "Heatmap");
-    confForTiles.setString("hbase.zookeepers", "localhost:2181");
+    confForTiles.setString("hbase.catalog", CATALOG_NAME);
+    confForTiles.setString("geomesa.schema.name", TILE_SCHEMA_NAME);
+    confForTiles.setString("hbase.zookeepers", ZOOKEEPERS);
     confForTiles.setString("geomesa.primary.field.name", "id");
     confForTiles.setString("geomesa.indices.enabled", "id");
     List<Tuple2<String, GeoMesaType>> fieldNamesToTypesForTile = new LinkedList<>();
-    fieldNamesToTypesForTile.add(new Tuple2<>("id", GeoMesaType.STRING));
-    fieldNamesToTypesForTile.add(new Tuple2<>("tileId", GeoMesaType.LONG));
-    fieldNamesToTypesForTile.add(new Tuple2<>("endTime", GeoMesaType.DATE));
-    fieldNamesToTypesForTile.add(new Tuple2<>("data", GeoMesaType.POLYGON));
+    fieldNamesToTypesForTile.add(new Tuple2<>("pk", GeoMesaType.STRING));
+    fieldNamesToTypesForTile.add(new Tuple2<>("tile_id", GeoMesaType.LONG));
+    fieldNamesToTypesForTile.add(new Tuple2<>("windowEndTime", GeoMesaType.DATE));
+    fieldNamesToTypesForTile.add(new Tuple2<>("tile_result", GeoMesaType.STRING));
     GeoMesaDataStoreParam tileDataStoreParam = GeoMesaDataStoreParamFactory.createGeomesaDataStoreParam("HBase");
     tileDataStoreParam.initFromConfigOptions(confForTiles);
     GeoMesaStreamTableSchema heatMapSchema = new GeoMesaStreamTableSchema(fieldNamesToTypesForTile, confForTiles);
@@ -86,9 +86,9 @@ public class XiamenHeatMap {
     Configuration confForPolygon = new Configuration();
     confForPolygon.setString("geomesa.schema.name", "Geofence");
     confForPolygon.setString("geomesa.spatial.fields", "geom:Polygon");
-    confForPolygon.setString("hbase.zookeepers", "localhost:2181");
+    confForPolygon.setString("hbase.zookeepers", ZOOKEEPERS);
     confForPolygon.setString("geomesa.data.store", "hbase");
-    confForPolygon.setString("hbase.catalog", "Xiamen");
+    confForPolygon.setString("hbase.catalog", CATALOG_NAME);
     confForPolygon.setString("geomesa.primary.field.name", "pid");
     List<Tuple2<String, GeoMesaType>> fieldNamesToTypesForPolygon = new LinkedList<>();
     fieldNamesToTypesForPolygon.add(new Tuple2<>("id", GeoMesaType.STRING));
@@ -142,7 +142,7 @@ public class XiamenHeatMap {
             SlidingEventTimeWindows.of(windowLength, Time.minutes(5)),
             H_LEVEL,
             L_LEVEL,
-            true,
+            false,
             TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
     tileDataStream.getTileResultDataStream().addSink(heatMapSink);
     originalDataStream.spatialDimensionJoin(bsd, TopologyType.N_CONTAINS, new AddFenceId(), new TypeHint<Point>() { })
@@ -204,7 +204,12 @@ public class XiamenHeatMap {
   private static class AddFenceId implements JoinFunction<Point, Polygon, Point> {
     @Override
     public Point join(Point first, Polygon second) throws Exception {
-      String fid = ((Tuple) second.getUserData()).getField(0);
+      String fid;
+      if (second == null) {
+        fid = "-1";
+      } else {
+        fid = ((Tuple) second.getUserData()).getField(0);
+      }
       Tuple oldUserData = (Tuple) first.getUserData();
       Tuple newUserData = Tuple.newInstance(oldUserData.getArity() + 1);
       for (int i = 0; i < oldUserData.getArity(); i++) {

@@ -13,7 +13,7 @@ import java.util.Properties;
  * @date 2021/6/12 - 2:00 下午
  */
 public class KafkaDataProducer {
-    public static final String FILEPATH = "/Users/haocheng/Code/glink/glink-examples/src/main/resources/XiamenTrajDataCleaned.csv";
+    public static final String FILEPATH = "/mnt/hgfs/disk/dcic/data/origin/XiaMen2019DuanWu.csv";
     public static final String TOPICID = "XiamenData";
     public static final int SPEED_UP = 100;
     public static final int TIMEFIELDINDEX = 3;
@@ -24,13 +24,13 @@ public class KafkaDataProducer {
 
     public static void main(String[] args) throws Exception {
         // Drop old tables in HBase
-        new HBaseCatalogCleaner(XiamenHeatMap.ZOOKEEPERS).deleteTable(CATALOG_NAME, TILE_SCHEMA_NAME);
-        new HBaseCatalogCleaner(XiamenHeatMap.ZOOKEEPERS).deleteTable(CATALOG_NAME, POINTS_SCHEMA_NAME);
+        new HBaseCatalogCleaner(XiamenTwoJobs.ZOOKEEPERS).deleteTable(CATALOG_NAME, TILE_SCHEMA_NAME);
+        new HBaseCatalogCleaner(XiamenTwoJobs.ZOOKEEPERS).deleteTable(CATALOG_NAME, POINTS_SCHEMA_NAME);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         Properties props = new Properties();
-        props.put("bootstrap.servers", XiamenHeatMap.KAFKA_BOOSTRAP_SERVERS);
-        props.put("zookeeper.connect", XiamenHeatMap.ZOOKEEPERS);
+        props.put("bootstrap.servers", XiamenTwoJobs.KAFKA_BOOSTRAP_SERVERS);
+        props.put("zookeeper.connect", XiamenTwoJobs.ZOOKEEPERS);
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("auto.offset.reset", "latest");
