@@ -312,8 +312,8 @@ public enum TileAggregateType implements Serializable {
                     int pixelId = pixel.getPixel().getPixelNo();
                     if (pixelIdAcc.contains(pixelId)) {
                         int index = pixelIdAcc.indexOf(pixelId);
-                        double oldVal = (double) lAcc.get(index).getResult();
-                        double toAdd = (double) pixel.getResult();
+                        int oldVal = (int) lAcc.get(index).getResult();
+                        int toAdd = (int) pixel.getResult();
                         lAcc.get(index).setResult(oldVal + toAdd);
                     } else {
                         lAcc.add(pixel);
