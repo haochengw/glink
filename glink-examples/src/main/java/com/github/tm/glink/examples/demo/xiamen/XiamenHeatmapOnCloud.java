@@ -44,7 +44,7 @@ public class XiamenHeatmapOnCloud {
     // For spatial data stream source.
     public static final String ZOOKEEPERS = "bigdata2:2181,bigdata3:2181,bigdata4:2181";
     public static final String KAFKA_BOOSTRAP_SERVERS = "bigdata2:9092";
-    public static final String KAFKA_GROUP_ID = "TWOJOBS";
+    public static final String KAFKA_GROUP_ID = "TWOJOBSA";
     public static final String CATALOG_NAME = "Xiamen";
     public static final String TILE_SCHEMA_NAME = "Heatmap";
     public static final String POINTS_SCHEMA_NAME = "JoinedPoints";

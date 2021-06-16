@@ -44,7 +44,7 @@ public class XiamenGeoFenceJoin {
     // For spatial data stream source.
     public static final String ZOOKEEPERS = "u0:2181,u1:2181,u2:2181";
     public static final String KAFKA_BOOSTRAP_SERVERS = "u0:9092";
-    public static final String KAFKA_GROUP_ID = "TWOJOBS";
+    public static final String KAFKA_GROUP_ID = "TWOJOBSB";
     public static final String CATALOG_NAME = "Xiamen";
     public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
     public static final long WIN_LEN = 5L;

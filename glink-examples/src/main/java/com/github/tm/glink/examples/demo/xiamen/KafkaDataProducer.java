@@ -15,7 +15,7 @@ import java.util.Properties;
 public class KafkaDataProducer {
     public static final String FILEPATH = "/mnt/hgfs/disk/dcic/data/origin/XiaMen2019DuanWu.csv";
     public static final String TOPICID = "XiamenData";
-    public static final int SPEED_UP = 1;
+    public static final int SPEED_UP = 20;
     public static final int TIMEFIELDINDEX = 3;
     public static final TextFileSplitter SPLITTER = TextFileSplitter.CSV;
     public static final String CATALOG_NAME = "Xiamen";
