@@ -14,7 +14,6 @@ import com.github.tm.glink.core.tile.Pixel;
 import com.github.tm.glink.core.tile.PixelResult;
 import com.github.tm.glink.core.tile.TileResult;
 import com.github.tm.glink.examples.demo.xiamen.AvroStringTileResultToSimpleFeatureConverter;
-import com.github.tm.glink.examples.demo.xiamen.XiamenHeatmap;
 import com.github.tm.glink.sql.util.Schema;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
@@ -23,7 +22,6 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
@@ -37,9 +35,9 @@ import java.util.*;
  * @date 2021/6/17 - 10:38 上午
  */
 public class NYCHeatmap {
-    public static final int PARALLELISM = 1;
-    public static final String ZOOKEEPERS = "127.0.0.1:2181";
-    public static final String KAFKA_BOOSTRAP_SERVERS = "localhost:9092";
+    public static final int PARALLELISM = 4;
+    public static final String ZOOKEEPERS = "u0:2181,u1:2181,u2:2181";
+    public static final String KAFKA_BOOSTRAP_SERVERS = "u0:9092";
     public static final String KAFKA_GROUP_ID = "TWOJOBSB";
     public static final String CATALOG_NAME = "NYC";
     public static final String TILE_SCHEMA_NAME = "Heatmap";
@@ -77,7 +75,7 @@ public class NYCHeatmap {
 
         // Fields: vendor_name, Trip_Pickup_DateTime, Passenger_Count, Trip_Distance, Start_Lon, Start_Lat
         SpatialDataStream<Point> originalDataStream = new SpatialDataStream<Point>(
-                env, new FlinkKafkaConsumer<>(KafkaDataProducer.TOPICID, new SimpleStringSchema(), props).setStartFromEarliest(),
+                env, new FlinkKafkaConsumer<>(KafkaDataProducer.TOPICID, new SimpleStringSchema(), props).setStartFromLatest(),
                 1, 2, TextFileSplitter.CSV, GeometryType.POINT, true,
                 Schema.types(Long.class, String.class))
                 .assignTimestampsAndWatermarks((WatermarkStrategy.<Point>forBoundedOutOfOrderness(Duration.ofSeconds(3))
@@ -86,12 +84,12 @@ public class NYCHeatmap {
         TileDataStream tileDataStream = new TileDataStream(
                 originalDataStream,
                 new CountAggregator(),
-                TumblingEventTimeWindows.of(Time.seconds(1)),
+                TumblingEventTimeWindows.of(Time.hours(1)),
                 18,
                 12,
                 false,
                 TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
-        tileDataStream.getTileResultDataStream().print();
+        tileDataStream.getTileResultDataStream().addSink(heatMapSink);
         env.execute();
     }
 

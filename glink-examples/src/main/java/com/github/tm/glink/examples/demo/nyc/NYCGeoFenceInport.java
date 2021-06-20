@@ -2,7 +2,6 @@ package com.github.tm.glink.examples.demo.nyc;
 
 import com.github.tm.glink.core.serialize.GlinkSerializerRegister;
 import com.github.tm.glink.examples.demo.xiamen.XiamenGeoFenceInport;
-import com.github.tm.glink.examples.demo.xiamen.XiamenTwoJobs;
 import com.github.tm.glink.sql.GlinkSQLRegister;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;

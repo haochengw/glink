@@ -97,7 +97,7 @@ public class XiamenHeatmap {
         TileDataStream tileDataStream = new TileDataStream(
                 originalDataStream,
                 new CountAggregator(),
-                SlidingEventTimeWindows.of(windowLength, Time.minutes(5)),
+                SlidingEventTimeWindows.of(windowLength, Time.minutes(1)),
                 H_LEVEL,
                 L_LEVEL,
                 false,
@@ -108,7 +108,7 @@ public class XiamenHeatmap {
 
     }
 
-    private static class CountAggregator implements AggregateFunction<Tuple2<Tuple2<PixelResult<Integer>, Point>,String>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
+    public static class CountAggregatorWithSalt implements AggregateFunction<Tuple2<Tuple2<PixelResult<Integer>, Point>,String>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
 
         @Override
         public Map<Pixel, Tuple2<Integer, HashSet<String>>> createAccumulator() {
@@ -157,7 +157,57 @@ public class XiamenHeatmap {
         }
     }
 
-    private static class AddFenceId implements JoinFunction<Point, Polygon, Point> {
+    static class CountAggregator implements AggregateFunction<Tuple2<PixelResult<Integer>, Point>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> createAccumulator() {
+            return new HashMap<>();
+        }
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> add(Tuple2<PixelResult<Integer>, Point> inPiexl, Map<Pixel, Tuple2<Integer, HashSet<String>>> pixelIntegerMap) {
+            Pixel pixel = inPiexl.f0.getPixel();
+            String carNo = ((Tuple) inPiexl.f1.getUserData()).getField(CARNO_FIELD_UDINDEX);
+            try {
+                if (!pixelIntegerMap.containsKey(pixel)) {
+                    HashSet<String> carNos = new HashSet<>();
+                    carNos.add(carNo);
+                    pixelIntegerMap.put(pixel, new Tuple2<>(1, carNos));
+                } else if (!pixelIntegerMap.get(pixel).f1.contains(carNo)) {
+                    pixelIntegerMap.get(pixel).f1.add(carNo);
+                    pixelIntegerMap.get(pixel).f0 = pixelIntegerMap.get(pixel).f0 + 1;
+                } // 该像素已经出现过，但是车辆尚未在其中出现过。
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return pixelIntegerMap;
+        }
+
+        @Override
+        public TileResult<Integer> getResult(Map<Pixel, Tuple2<Integer, HashSet<String>>> pixelIntegerMap) {
+            TileResult<Integer> ret = new TileResult<>();
+            ret.setTile(pixelIntegerMap.keySet().iterator().next().getTile());
+            for (Map.Entry<Pixel, Tuple2<Integer, HashSet<String>>> entry : pixelIntegerMap.entrySet()) {
+                ret.addPixelResult(new PixelResult<>(entry.getKey(), entry.getValue().f0));
+            }
+            return ret;
+        }
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> merge(Map<Pixel, Tuple2<Integer, HashSet<String>>> acc0, Map<Pixel, Tuple2<Integer, HashSet<String>>> acc1) {
+            Map<Pixel, Tuple2<Integer, HashSet<String>>> acc2 = new HashMap<>(acc0);
+            acc1.forEach((key, value) -> acc2.merge(key, value, (v1, v2) -> new Tuple2<>(v1.f0 + v1.f0, combineSets(v1.f1, v2.f1))));
+            return acc2;
+        }
+
+        private HashSet<String> combineSets(HashSet<String> v1, HashSet<String> v2) {
+            v1.addAll(v2);
+            return v1;
+        }
+    }
+
+
+    static class AddFenceId implements JoinFunction<Point, Polygon, Point> {
         @Override
         public Point join(Point first, Polygon second) throws Exception {
             String fid;

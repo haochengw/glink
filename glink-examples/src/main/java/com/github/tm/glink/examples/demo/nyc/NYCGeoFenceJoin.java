@@ -10,15 +10,12 @@ import com.github.tm.glink.connector.geomesa.util.GeoMesaStreamTableSchema;
 import com.github.tm.glink.connector.geomesa.util.GeoMesaType;
 import com.github.tm.glink.core.datastream.BroadcastSpatialDataStream;
 import com.github.tm.glink.core.datastream.SpatialDataStream;
-import com.github.tm.glink.core.datastream.TileDataStream;
 import com.github.tm.glink.core.enums.GeometryType;
 import com.github.tm.glink.core.enums.TextFileSplitter;
-import com.github.tm.glink.core.enums.TileAggregateType;
 import com.github.tm.glink.core.enums.TopologyType;
 import com.github.tm.glink.core.tile.Pixel;
 import com.github.tm.glink.core.tile.PixelResult;
 import com.github.tm.glink.core.tile.TileResult;
-import com.github.tm.glink.examples.utils.HBaseCatalogCleaner;
 import com.github.tm.glink.sql.util.Schema;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
@@ -29,9 +26,6 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
-import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -50,7 +44,6 @@ public class NYCGeoFenceJoin {
     public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
     public static final int PARALLELISM = 4;
     public static final int CARNO_FIELD_UDINDEX = 1;
-    public static final int TIMEFIELDINDEX = 0;
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -103,7 +96,7 @@ public class NYCGeoFenceJoin {
         props.setProperty("group.id",KAFKA_GROUP_ID);
         // 模拟流
         SpatialDataStream<Point> originalDataStream = new SpatialDataStream<Point>(
-                env, new FlinkKafkaConsumer<>(KafkaDataProducer.TOPICID, new SimpleStringSchema(), props).setStartFromEarliest(),
+                env, new FlinkKafkaConsumer<>(KafkaDataProducer.TOPICID, new SimpleStringSchema(), props).setStartFromLatest(),
                 1, 2, TextFileSplitter.CSV, GeometryType.POINT, true,
                 Schema.types(Long.class, String.class))
                 .assignTimestampsAndWatermarks((WatermarkStrategy.<Point>forBoundedOutOfOrderness(Duration.ofSeconds(3))
