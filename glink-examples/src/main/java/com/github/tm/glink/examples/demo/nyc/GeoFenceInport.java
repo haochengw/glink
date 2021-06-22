@@ -1,4 +1,4 @@
-package com.github.tm.glink.examples.demo.xiamen;
+package com.github.tm.glink.examples.demo.nyc;
 
 import com.github.tm.glink.core.serialize.GlinkSerializerRegister;
 import com.github.tm.glink.sql.GlinkSQLRegister;
@@ -9,13 +9,14 @@ import java.util.Objects;
 
 /**
  * @author Wang Haocheng
+ * @date 2021/6/17 - 9:58 下午
  */
-public class XiamenGeoFenceInportOnCloud {
+public class GeoFenceInport {
 
-    public static final String ZOOKEEPERS = "bigdata2:2181,bigdata3:2181,bigdata4:2181";
-    public static final String CATALOG_NAME = "Xiamen";
+    public static final String ZOOKEEPERS = Heatmap.ZOOKEEPERS;
+    public static final String CATALOG_NAME = Heatmap.CATALOG_NAME;
     public static final String GEOFENCE_SCHEMA_NAME = "Geofence";
-    public static final String FILEPATH = "/opt/xm_residential.txt";
+    public static final String FILEPATH = Objects.requireNonNull(com.github.tm.glink.examples.demo.xiamen.GeoFenceInport.class.getClassLoader().getResource("XiamenPolygonData.txt")).getPath();
 
     public static void main(String[] args) {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();

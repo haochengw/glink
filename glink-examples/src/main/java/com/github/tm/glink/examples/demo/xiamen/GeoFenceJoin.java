@@ -39,11 +39,11 @@ import org.locationtech.jts.geom.Polygon;
 import java.time.Duration;
 import java.util.*;
 
-public class XiamenGeoFenceJoinOnCloud {
+public class GeoFenceJoin {
 
     // For spatial data stream source.
-    public static final String ZOOKEEPERS = "bigdata2:2181,bigdata3:2181,bigdata4:2181";
-    public static final String KAFKA_BOOSTRAP_SERVERS = "bigdata2:9092";
+    public static final String ZOOKEEPERS = Heatmap.ZOOKEEPERS;
+    public static final String KAFKA_BOOSTRAP_SERVERS = Heatmap.KAFKA_BOOSTRAP_SERVERS;
     public static final String KAFKA_GROUP_ID = "TWOJOBSB";
     public static final String CATALOG_NAME = "Xiamen";
     public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
@@ -53,10 +53,12 @@ public class XiamenGeoFenceJoinOnCloud {
     public static final int TIMEFIELDINDEX = 3;
 
     public static void main(String[] args) throws Exception {
+        Time windowLength = Time.minutes(WIN_LEN);
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.getConfig().setAutoWatermarkInterval(1000L);
         env.setParallelism(PARALLELISM);
         env.disableOperatorChaining();
+
         // Get polygon source function
         Configuration confForPolygon = new Configuration();
         confForPolygon.setString("geomesa.schema.name", "Geofence");

@@ -33,10 +33,10 @@ import org.locationtech.jts.geom.Polygon;
 import java.time.Duration;
 import java.util.*;
 
-import static com.github.tm.glink.examples.demo.nyc.NYCHeatmap.KAFKA_BOOSTRAP_SERVERS;
-import static com.github.tm.glink.examples.demo.nyc.NYCHeatmap.ZOOKEEPERS;
+import static com.github.tm.glink.examples.demo.nyc.Heatmap.KAFKA_BOOSTRAP_SERVERS;
+import static com.github.tm.glink.examples.demo.nyc.Heatmap.ZOOKEEPERS;
 
-public class NYCGeoFenceJoin {
+public class GeoFenceJoin {
 
     // For spatial data stream source.
     public static final String KAFKA_GROUP_ID = "TWOJOBSA";

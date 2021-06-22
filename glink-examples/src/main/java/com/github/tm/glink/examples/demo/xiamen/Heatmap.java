@@ -39,18 +39,23 @@ import org.locationtech.jts.geom.Polygon;
 import java.time.Duration;
 import java.util.*;
 
-public class XiamenGeoFenceJoin {
+public class Heatmap {
 
     // For spatial data stream source.
-    public static final String ZOOKEEPERS = "u0:2181,u1:2181,u2:2181";
-    public static final String KAFKA_BOOSTRAP_SERVERS = "u0:9092";
-    public static final String KAFKA_GROUP_ID = "TWOJOBSB";
+    public static final String ZOOKEEPERS = "localhost:2181";
+    public static final String KAFKA_BOOSTRAP_SERVERS = "localhost:9092";
+    public static final String KAFKA_GROUP_ID = "TWOJOBSA";
     public static final String CATALOG_NAME = "Xiamen";
+    public static final String TILE_SCHEMA_NAME = "Heatmap";
     public static final String POINTS_SCHEMA_NAME = "JoinedPoints";
     public static final long WIN_LEN = 5L;
-    public static final int PARALLELISM = 4;
+    public static final int PARALLELISM = 10;
     public static final int CARNO_FIELD_UDINDEX = 4;
     public static final int TIMEFIELDINDEX = 3;
+    public static final TextFileSplitter SPLITTER = TextFileSplitter.CSV;
+    // For heatmap generation.
+    public static final int H_LEVEL = 18;
+    public static final int L_LEVEL = 12;
 
     public static void main(String[] args) throws Exception {
         Time windowLength = Time.minutes(WIN_LEN);
@@ -59,47 +64,23 @@ public class XiamenGeoFenceJoin {
         env.setParallelism(PARALLELISM);
         env.disableOperatorChaining();
 
-        // Get polygon source function
-        Configuration confForPolygon = new Configuration();
-        confForPolygon.setString("geomesa.schema.name", "Geofence");
-        confForPolygon.setString("geomesa.spatial.fields", "geom:Polygon");
-        confForPolygon.setString("hbase.zookeepers", ZOOKEEPERS);
-        confForPolygon.setString("geomesa.data.store", "hbase");
-        confForPolygon.setString("hbase.catalog", CATALOG_NAME);
-        confForPolygon.setString("geomesa.primary.field.name", "pid");
-        List<Tuple2<String, GeoMesaType>> fieldNamesToTypesForPolygon = new LinkedList<>();
-        fieldNamesToTypesForPolygon.add(new Tuple2<>("id", GeoMesaType.STRING));
-        fieldNamesToTypesForPolygon.add(new Tuple2<>("dtg", GeoMesaType.DATE));
-        fieldNamesToTypesForPolygon.add(new Tuple2<>("geom", GeoMesaType.POLYGON));
-        fieldNamesToTypesForPolygon.add(new Tuple2<>("name", GeoMesaType.STRING));
-        GeoMesaDataStoreParam polygonDataStoreParam = GeoMesaDataStoreParamFactory.createGeomesaDataStoreParam("HBase");
-        polygonDataStoreParam.initFromConfigOptions(confForPolygon);
-        GeoMesaStreamTableSchema polygonSchema = new GeoMesaStreamTableSchema(fieldNamesToTypesForPolygon, confForPolygon);
-        GeoMesaSourceFunction polygonSource = new GeoMesaSourceFunction(polygonDataStoreParam, polygonSchema, new SimpleFeatureToGeometryConverter(polygonSchema));
-        SpatialDataStream<Polygon> polygonsds = new SpatialDataStream<Polygon>(env, polygonSource, GeometryType.POLYGON);
-        BroadcastSpatialDataStream bsd = new BroadcastSpatialDataStream(polygonsds);
-
-        // Get point sink function
-        Configuration confForOutputPoints = new Configuration();
-        confForOutputPoints.setString("geomesa.schema.name", POINTS_SCHEMA_NAME);
-        confForOutputPoints.setString("geomesa.spatial.fields", "point2:Point");
-        confForOutputPoints.setString("hbase.zookeepers", ZOOKEEPERS);
-        confForOutputPoints.setString("geomesa.data.store", "hbase");
-        confForOutputPoints.setString("hbase.catalog", CATALOG_NAME);
-        confForOutputPoints.setString("geomesa.primary.field.name", "pid");
-        List<Tuple2<String, GeoMesaType>> fieldNamesToTypesForPoints = new LinkedList<>();
-        fieldNamesToTypesForPoints.add(new Tuple2<>("point2", GeoMesaType.POINT));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("status", GeoMesaType.INTEGER));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("speed", GeoMesaType.DOUBLE));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("azimuth", GeoMesaType.INTEGER));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("ts", GeoMesaType.DATE));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("tid", GeoMesaType.STRING));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("pid", GeoMesaType.STRING));
-        fieldNamesToTypesForPoints.add(new Tuple2<>("fid", GeoMesaType.STRING));
-        GeoMesaDataStoreParam pointDataStoreParam = GeoMesaDataStoreParamFactory.createGeomesaDataStoreParam("HBase");
-        pointDataStoreParam.initFromConfigOptions(confForOutputPoints);
-        GeoMesaStreamTableSchema pointSchema = new GeoMesaStreamTableSchema(fieldNamesToTypesForPoints, confForOutputPoints);
-        GeoMesaSinkFunction pointSink = new GeoMesaSinkFunction<>(pointDataStoreParam, pointSchema, new PointToSimpleFeatureConverter(pointSchema));
+        // Get heatmap sink function
+        Configuration confForTiles = new Configuration();
+        confForTiles.setString("geomesa.data.store", "hbase");
+        confForTiles.setString("hbase.catalog", CATALOG_NAME);
+        confForTiles.setString("geomesa.schema.name", TILE_SCHEMA_NAME);
+        confForTiles.setString("hbase.zookeepers", ZOOKEEPERS);
+        confForTiles.setString("geomesa.primary.field.name", "id");
+        confForTiles.setString("geomesa.indices.enabled", "id");
+        List<Tuple2<String, GeoMesaType>> fieldNamesToTypesForTile = new LinkedList<>();
+        fieldNamesToTypesForTile.add(new Tuple2<>("pk", GeoMesaType.STRING));
+        fieldNamesToTypesForTile.add(new Tuple2<>("tile_id", GeoMesaType.LONG));
+        fieldNamesToTypesForTile.add(new Tuple2<>("windowEndTime", GeoMesaType.DATE));
+        fieldNamesToTypesForTile.add(new Tuple2<>("tile_result", GeoMesaType.STRING));
+        GeoMesaDataStoreParam tileDataStoreParam = GeoMesaDataStoreParamFactory.createGeomesaDataStoreParam("HBase");
+        tileDataStoreParam.initFromConfigOptions(confForTiles);
+        GeoMesaStreamTableSchema heatMapSchema = new GeoMesaStreamTableSchema(fieldNamesToTypesForTile, confForTiles);
+        GeoMesaSinkFunction heatMapSink = new GeoMesaSinkFunction(tileDataStoreParam, heatMapSchema, new AvroStringTileResultToSimpleFeatureConverter(heatMapSchema));
         // Kafka properties
         Properties props = new Properties();
         props.setProperty("bootstrap.servers", KAFKA_BOOSTRAP_SERVERS);
@@ -112,13 +93,69 @@ public class XiamenGeoFenceJoin {
                 Schema.types(Integer.class, Double.class, Integer.class, Long.class, String.class, String.class))
                 .assignTimestampsAndWatermarks((WatermarkStrategy.<Point>forBoundedOutOfOrderness(Duration.ofSeconds(3))
                         .withTimestampAssigner((event, timestamp) -> ((Tuple) event.getUserData()).getField(TIMEFIELDINDEX))));
-        originalDataStream.spatialDimensionJoin(bsd, TopologyType.N_CONTAINS, new AddFenceId(), new TypeHint<Point>() { })
-                .addSink(pointSink);
+        // 热力图生成
+        TileDataStream tileDataStream = new TileDataStream(
+                originalDataStream,
+                new CountAggregator(),
+                SlidingEventTimeWindows.of(windowLength, Time.minutes(1)),
+                H_LEVEL,
+                L_LEVEL,
+                false,
+                TileAggregateType.getFinalAggregateFunction(TileAggregateType.SUM));
+        tileDataStream.getTileResultDataStream().addSink(heatMapSink);
         env.execute();
-
     }
 
-    private static class CountAggregator implements AggregateFunction<Tuple2<PixelResult<Integer>, Point>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
+    public static class CountAggregatorWithSalt implements AggregateFunction<Tuple2<Tuple2<PixelResult<Integer>, Point>,String>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> createAccumulator() {
+            return new HashMap<>();
+        }
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> add(Tuple2<Tuple2<PixelResult<Integer>, Point>,String> inPiexl, Map<Pixel, Tuple2<Integer, HashSet<String>>> pixelIntegerMap) {
+            Pixel pixel = inPiexl.f0.f0.getPixel();
+            String carNo = ((Tuple) inPiexl.f0.f1.getUserData()).getField(CARNO_FIELD_UDINDEX);
+            try {
+                if (!pixelIntegerMap.containsKey(pixel)) {
+                    HashSet<String> carNos = new HashSet<>();
+                    carNos.add(carNo);
+                    pixelIntegerMap.put(pixel, new Tuple2<>(1, carNos));
+                } else if (!pixelIntegerMap.get(pixel).f1.contains(carNo)) {
+                    pixelIntegerMap.get(pixel).f1.add(carNo);
+                    pixelIntegerMap.get(pixel).f0 = pixelIntegerMap.get(pixel).f0 + 1;
+                } // 该像素已经出现过，但是车辆尚未在其中出现过。
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return pixelIntegerMap;
+        }
+
+        @Override
+        public TileResult<Integer> getResult(Map<Pixel, Tuple2<Integer, HashSet<String>>> pixelIntegerMap) {
+            TileResult<Integer> ret = new TileResult<>();
+            ret.setTile(pixelIntegerMap.keySet().iterator().next().getTile());
+            for (Map.Entry<Pixel, Tuple2<Integer, HashSet<String>>> entry : pixelIntegerMap.entrySet()) {
+                ret.addPixelResult(new PixelResult<>(entry.getKey(), entry.getValue().f0));
+            }
+            return ret;
+        }
+
+        @Override
+        public Map<Pixel, Tuple2<Integer, HashSet<String>>> merge(Map<Pixel, Tuple2<Integer, HashSet<String>>> acc0, Map<Pixel, Tuple2<Integer, HashSet<String>>> acc1) {
+            Map<Pixel, Tuple2<Integer, HashSet<String>>> acc2 = new HashMap<>(acc0);
+            acc1.forEach((key, value) -> acc2.merge(key, value, (v1, v2) -> new Tuple2<>(v1.f0 + v1.f0, combineSets(v1.f1, v2.f1))));
+            return acc2;
+        }
+
+        private HashSet<String> combineSets(HashSet<String> v1, HashSet<String> v2) {
+            v1.addAll(v2);
+            return v1;
+        }
+    }
+
+    static class CountAggregator implements AggregateFunction<Tuple2<PixelResult<Integer>, Point>, Map<Pixel, Tuple2<Integer, HashSet<String>>>, TileResult<Integer>> {
 
         @Override
         public Map<Pixel, Tuple2<Integer, HashSet<String>>> createAccumulator() {
@@ -167,7 +204,8 @@ public class XiamenGeoFenceJoin {
         }
     }
 
-    private static class AddFenceId implements JoinFunction<Point, Polygon, Point> {
+
+    static class AddFenceId implements JoinFunction<Point, Polygon, Point> {
         @Override
         public Point join(Point first, Polygon second) throws Exception {
             String fid;

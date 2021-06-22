@@ -34,7 +34,7 @@ import java.util.*;
  * @author Wang Haocheng
  * @date 2021/6/17 - 10:38 上午
  */
-public class NYCHeatmap {
+public class Heatmap {
     public static final int PARALLELISM = 4;
     public static final String ZOOKEEPERS = "u0:2181,u1:2181,u2:2181";
     public static final String KAFKA_BOOSTRAP_SERVERS = "u0:9092";
